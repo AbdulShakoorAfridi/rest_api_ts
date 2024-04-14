@@ -50,7 +50,8 @@ export const createBook = async (req:Request, res:Response, next:NextFunction) =
         
         // console.log("upload result : ",uploadResult);
         // console.log("upload bookFile : ",bookFileUploadResult);
-        
+        // @ts-ignore
+        console.log(req.userId)
         const newBookFile = await BookModel.create({
             title: req.body.title,
             author: req.body.author,

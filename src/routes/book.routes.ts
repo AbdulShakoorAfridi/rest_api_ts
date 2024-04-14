@@ -2,6 +2,7 @@ import express from 'express';
 import { allBooks, createBook, deleteBook, singleBook, updateBook } from '../controllers/book.controller';
 import multer from "multer";
 import path from 'node:path';
+import { authenticationVerification } from '../middleware/authenticationVerification';
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ const upload = multer({
 })
 
 
-router.route("/").post(upload.fields([
+router.route("/").post(authenticationVerification,upload.fields([
     {
         name:"coverImage",
         maxCount:1
