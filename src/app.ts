@@ -2,7 +2,8 @@ import express,{Request,Response,NextFunction} from "express";
 import createHttpError, { HttpError } from "http-errors";
 // import { CustomError } from "./middleware/CustomError";
 import { globalErrorHandler } from "./utils/globalErrorHandler";
-import router from "./routes/user.routes";
+import authRoutes from "./routes/user.routes";
+import bookRoutes from "./routes/book.routes"
 
 
 const app = express();
@@ -11,7 +12,8 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-app.use("/api/users",router)
+app.use("/api/users",authRoutes)
+app.use("/api/books",bookRoutes)
 //@ http method
 app.get("/", (req, res) => {
   res.status(200).json({
