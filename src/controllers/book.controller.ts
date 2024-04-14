@@ -6,6 +6,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { BookModel } from "../models/book.model";
 import { CustomError } from "../middleware/CustomError";
+import { AuthRequest } from "../middleware/authenticationVerification";
 
 // book controller
 // @access public
@@ -48,13 +49,13 @@ export const createBook = async (req:Request, res:Response, next:NextFunction) =
         });
         
         
-        // console.log("upload result : ",uploadResult);
-        // console.log("upload bookFile : ",bookFileUploadResult);
         // @ts-ignore
-        console.log(req.userId)
+        console.log(req.userId);
+        const _req = req as AuthRequest;
+
         const newBookFile = await BookModel.create({
             title: req.body.title,
-            author: req.body.author,
+            author: _req.userId,
             description: req.body.description,
             genre:req.body.genre,
             coverImage: uploadResult.secure_url,
@@ -95,7 +96,21 @@ export const createBook = async (req:Request, res:Response, next:NextFunction) =
 
 export const allBooks = async (req:Request, res:Response, next:NextFunction) => {
 
-   
+    try {
+
+        const allBooks = await BookModel.find({});
+        if(allBooks.length < 1) return next(createHttpError(400,"No Books found"));
+        
+        res.status(200).json({
+            status: "success",
+            message: "Books fetched successfully",
+            data: allBooks,
+        });
+      
+    } catch (error) {
+        const err = createHttpError( 403,`error while fetching books. ${error}`);
+        return next(err);
+    }
 
 };
 
@@ -106,12 +121,20 @@ export const allBooks = async (req:Request, res:Response, next:NextFunction) => 
 
 export const singleBook = async (req:Request, res:Response, next:NextFunction) => {
 
-    // const { id } = req.params;
-    // const book = await Book.findById(id);
-    // if (!book) {
-    //     throw createHttpError(404, "Book not found");
-    // }
-    // res.status(200).json(book);
+    try {
+        
+            const { id } = req.params;
+            const book = await BookModel.findById(id);
+            if (!book) {
+                const error = createHttpError(404, "Book not found" + id);
+               return next(error);
+            }
+            res.status(200).json(book);
+
+    } catch (error) {
+        const err = createHttpError( 403,`error while fetching single book. ${error}`);
+        return next(err);
+    }
    
 
 };
@@ -123,7 +146,79 @@ export const singleBook = async (req:Request, res:Response, next:NextFunction) =
 
 export const updateBook = async (req:Request, res:Response, next:NextFunction) => {
 
-   
+    const files = req.files as { [fieldname: string]: Express.Multer.File[]};
+
+
+    let completeCoverImage;
+
+    if (files && files['coverImage']) {
+
+        const  coverImageMimeType = files['coverImage'][0].mimetype.split("/").at(-1);
+         const  filename = files['coverImage'][0].filename;
+         const filePath = path.resolve(__dirname, '../../public/data/uploads', filename); 
+
+         completeCoverImage = filename;
+         const uploadResult = await cloudinary.uploader.upload(filePath, {
+              filename_override: completeCoverImage,
+              folder: "book-covers",
+              format: coverImageMimeType
+             });
+             
+
+         completeCoverImage = uploadResult.secure_url;
+         await fs.promises.unlink(filePath);
+    }
+    
+    let completeFileName;
+    if(files.file){
+        const bookFilePath = path.resolve(__dirname,"../../public/data/uploads/" + files.file[0].filename);
+
+        const bookFileName = files.file[0].filename;
+        completeFileName = bookFileName;
+
+
+          const bookFileUploadResult = await cloudinary.uploader.upload(bookFilePath, {
+            resource_type:"raw",
+            filename_override: completeFileName,
+            folder: "books-pdf",
+            format:"pdf"           
+        });
+
+        completeFileName = bookFileUploadResult.secure_url;
+        await fs.promises.unlink(bookFilePath);
+
+    }
+
+   try {
+
+    const { id } = req.params;
+    const book = await BookModel.findById(id);
+
+    if (!book) {
+        const error = createHttpError(404, "Book not found" + id);
+       return next(error);
+    }
+    const updatedBook = await BookModel.findByIdAndUpdate(id, {
+        ...req.body,
+        coverImage: completeCoverImage ? completeCoverImage : book.coverImage,
+        file: completeFileName ? completeFileName : book.file,
+    }, { new: true, runValidators:true });
+    if (!updatedBook) {
+        const error = createHttpError(404, "Book update failed" + id);
+       return next(error);
+    }
+    res.status(200).json(
+        {
+            status: "success",
+            message: "Book updated successfully",
+            data: updatedBook,
+        }
+    );
+
+   } catch (error) {
+    const err = createHttpError( 403,`error while updating book. ${error}`);
+    return next(err);
+}
 
 };
 
@@ -133,7 +228,32 @@ export const updateBook = async (req:Request, res:Response, next:NextFunction) =
 
 
 export const deleteBook = async (req:Request, res:Response, next:NextFunction) => {
+    try {
 
-   res.status(200).send({ message:'deleted success'})
+        const { id } = req.params;
+        const book = await BookModel.findById(id);
+        if (!book) {
+            const error = createHttpError(404, "Book not found" + id);
+           return next(error);
+        }
+        const deletedBook = await BookModel.findByIdAndDelete(id);
+        if (!deletedBook) {
+            const error = createHttpError(404, "Book delete failed" + id);
+           return next(error);
+        }
+        res.status(200).json(
+            {
+                status: "success",
+                message: "Book deleted successfully",
+                data: deletedBook.title,
+            }
+        );
+        
+    } catch (error) {
+        const err = createHttpError( 403,`error while deleting a book. ${error}`);
+        return next(err);
+
+    }
+
 
 };

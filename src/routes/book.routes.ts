@@ -24,8 +24,18 @@ router.route("/").post(authenticationVerification,upload.fields([
         name:"file",
         maxCount:1
     }
-]),createBook).get(allBooks)
-router.route('/:id').get(singleBook).patch(updateBook).delete(deleteBook)
+]),createBook).get(allBooks);
+
+router.route('/:id').get(singleBook).patch(authenticationVerification,upload.fields([
+    {
+        name:"coverImage",
+        maxCount:1
+    },
+    {
+        name:"file",
+        maxCount:1
+    }
+]),updateBook).delete(authenticationVerification,deleteBook)
 
 
 export default router;
