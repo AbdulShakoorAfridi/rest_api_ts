@@ -11,6 +11,7 @@ const _config = {
     CLOUDINERY_CLOUD: process.env.CLOUDINERY_CLOUD,
     CLOUDINERY_API_KEY: process.env.CLOUDINERY_API_KEY,
     CLOUDINERY_API_SECRET: process.env.CLOUDINERY_API_SECRET,
+    FRONT_END_DOMIN:process.env.FRONT_END_DOMIN
 }
 
 export const config = Object.freeze(_config);

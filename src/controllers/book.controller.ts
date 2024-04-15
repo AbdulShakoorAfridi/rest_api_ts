@@ -50,7 +50,7 @@ export const createBook = async (req:Request, res:Response, next:NextFunction) =
         
         
         // @ts-ignore
-        console.log(req.userId);
+        // console.log(req.userId);
         const _req = req as AuthRequest;
 
         const newBookFile = await BookModel.create({
@@ -233,21 +233,43 @@ export const deleteBook = async (req:Request, res:Response, next:NextFunction) =
         const { id } = req.params;
         const book = await BookModel.findById(id);
         if (!book) {
-            const error = createHttpError(404, "Book not found" + id);
+            const error = createHttpError(404, "Book not found :" + id);
            return next(error);
         }
+
+        const coverImageFile = book.coverImage;
+        const bookCoverPublicIdPt1 = coverImageFile.split("/").at(-2);
+        const bookCoverPublicIdPt2 = coverImageFile.split("/").at(-1);
+        const coverP2firstPart = bookCoverPublicIdPt2?.split(".").at(0);
+        
+        const coverImagePublicId= bookCoverPublicIdPt1+"/"+coverP2firstPart;
+ 
+
+        const bookFile = book.file;
+        const bookFilePublicIdPt1 = bookFile.split("/").at(-2);
+        const bookFilePublicIdPt2 = bookFile?.split("/").at(-1);
+    
+        
+        const bookFilePublicId= bookFilePublicIdPt1+"/"+bookFilePublicIdPt2;
+
+
+
+        try {
+            await cloudinary.uploader.destroy(bookFilePublicId);
+            await cloudinary.uploader.destroy(coverImagePublicId,{
+                resource_type:"raw"
+            })
+        } catch (error) {
+            return next(createHttpError(500, "Could not delete book file"+ error));
+        }
+
         const deletedBook = await BookModel.findByIdAndDelete(id);
         if (!deletedBook) {
-            const error = createHttpError(404, "Book delete failed" + id);
+            const error = createHttpError(404, "Book delete failed :" + id);
            return next(error);
         }
-        res.status(200).json(
-            {
-                status: "success",
-                message: "Book deleted successfully",
-                data: deletedBook.title,
-            }
-        );
+
+        res.sendStatus(204)
         
     } catch (error) {
         const err = createHttpError( 403,`error while deleting a book. ${error}`);
